@@ -19,8 +19,9 @@ async def send_to_claude_agent(chunk: Chunk) -> None:
     print(f"-----→ [{chunk.file_path}] sending chunk ({len(chunk.content)} chars):\n{chunk.content}")
 
 
-async def producer(repo_url: str, queue: asyncio.Queue, chunk_size: int = 300):
-    summary, tree, content = await asyncio.to_thread(ingest, repo_url)
+async def producer(repo_url: str, queue: asyncio.Queue, chunk_size: int = 300, token: str | None = None):
+    kwargs = {"token": token} if token else {}
+    summary, tree, content = await asyncio.to_thread(ingest, repo_url, **kwargs)
     lines = content.splitlines(keepends=True)
 
     file_header = ""
@@ -78,18 +79,24 @@ async def consumer(queue: asyncio.Queue[Chunk | None]) -> None:
         await send_to_claude_agent(chunk)
 
 
-async def main(source: str) -> None:
+async def main(source: str, token: str | None = None) -> None:
     queue: asyncio.Queue[Chunk | None] = asyncio.Queue(maxsize=4)
-    await asyncio.gather(producer(source, queue), consumer(queue))
+    await asyncio.gather(producer(source, queue, token=token), consumer(queue))
 
 
 if __name__ == "__main__":
-    import sys
+    import os
     from pathlib import Path
+    from github_auth import get_token_for_repo
 
-    # path = sys.argv[1] if len(sys.argv) > 1 else __file__
-    path = 'https://github.com/gillespie-alex/C_Data_Structures/tree/master'
-    # print(path)
-    # source = Path(path).read_text()
-    # print(source)
-    asyncio.run(main(path))
+    path = 'https://github.com/sadosystems/moonlark'
+    # path = 'https://github.com/gillespie-alex/C_Data_Structures/tree/master'
+
+    app_id = os.environ["GITHUB_APP_ID"]
+    private_key = Path(os.environ["GITHUB_PRIVATE_KEY_PATH"]).read_text()
+
+    # Parse owner from repo URL: https://github.com/<owner>/<repo>/...
+    repo_owner = path.split("/")[3]
+    token = get_token_for_repo(app_id, private_key, repo_owner)
+
+    asyncio.run(main(path, token=token))
