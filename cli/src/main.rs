@@ -29,6 +29,8 @@ enum Commands {
         #[arg(long)]
         all: bool,
     },
+    /// Show the percentage of CONTRADICTS vs CONNECTS links for the current snapshot
+    Stats,
 }
 
 #[derive(Debug, Deserialize)]
@@ -51,16 +53,22 @@ impl LinkType {
 struct SourceSpan {
     file_path: String,
     start_line_number: i32,
+    #[serde(default)]
     start_column: i32,
     end_line_number: i32,
+    #[serde(default)]
     end_column: i32,
+    /// Optional: instead of specifying columns, provide the exact text to match
+    /// within the line range. Columns will be resolved from this.
+    #[serde(default)]
+    text: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 struct LinkInput {
     link_type: LinkType,
     here: SourceSpan,
-    there: SourceSpan,
+    there: Vec<SourceSpan>,
 }
 
 fn parse_link_json(json: &str) -> Result<LinkInput, String> {
@@ -70,9 +78,12 @@ fn parse_link_json(json: &str) -> Result<LinkInput, String> {
              Expected schema:\n  \
              {{\n    \
                \"link_type\": \"CONNECTS\" | \"CONTRADICTS\",\n    \
-               \"here\": {{ \"file_path\": string, \"start_line_number\": int, \"start_column\": int, \"end_line_number\": int, \"end_column\": int }},\n    \
-               \"there\": {{ ... same as here ... }}\n  \
-             }}"
+               \"here\": {{ \"file_path\": string, \"start_line_number\": int, \"end_line_number\": int, ...columns }},\n    \
+               \"there\": [{{ ... same as here ... }}, ...]\n  \
+             }}\n\n\
+             Columns can be specified two ways:\n  \
+               1. \"start_column\": int, \"end_column\": int\n  \
+               2. \"text\": string  (exact substring to match within the line range)"
         )
     })
 }
@@ -81,6 +92,94 @@ fn count_lines(path: &Path) -> Result<usize, String> {
     let content =
         fs::read_to_string(path).map_err(|e| format!("Failed to read {}: {e}", path.display()))?;
     Ok(content.lines().count())
+}
+
+/// If the span has a `text` field, resolve it to exact column numbers by finding
+/// the text as a substring within the specified line range of the file.
+fn resolve_text_to_columns(span: &mut SourceSpan, label: &str, repo_root: &Path) -> Result<(), String> {
+    let needle = match &span.text {
+        Some(t) => t.clone(),
+        None => return Ok(()),
+    };
+
+    let path = repo_root.join(&span.file_path);
+    let content = fs::read_to_string(&path)
+        .map_err(|e| format!("{label}: failed to read {}: {e}", span.file_path))?;
+    let file_lines: Vec<&str> = content.lines().collect();
+
+    let start_idx = (span.start_line_number - 1) as usize;
+    let end_idx = (span.end_line_number - 1) as usize;
+
+    if start_idx >= file_lines.len() || end_idx >= file_lines.len() {
+        return Err(format!(
+            "{label}: line range L{}–L{} is out of bounds (file has {} lines)",
+            span.start_line_number, span.end_line_number, file_lines.len()
+        ));
+    }
+
+    // Build the text of the line range
+    let region: String = file_lines[start_idx..=end_idx].join("\n");
+
+    if let Some(byte_offset) = region.find(&needle) {
+        // Convert byte offset to line + column within the region
+        let before = &region[..byte_offset];
+        let newlines_before = before.matches('\n').count();
+        let col_start = if newlines_before == 0 {
+            byte_offset + 1 // 1-indexed
+        } else {
+            byte_offset - before.rfind('\n').unwrap() // chars after last newline, already 1-indexed
+        };
+
+        let needle_end = byte_offset + needle.len();
+        let up_to_end = &region[..needle_end];
+        let newlines_in = up_to_end.matches('\n').count();
+        let col_end = if newlines_in == newlines_before {
+            // Same line as start
+            col_start + needle.len() - 1
+        } else {
+            let last_nl = up_to_end.rfind('\n').unwrap();
+            needle_end - last_nl - 1
+        };
+
+        span.start_line_number += newlines_before as i32;
+        span.start_column = col_start as i32;
+        span.end_line_number = span.start_line_number + (newlines_in - newlines_before) as i32;
+        span.end_column = col_end as i32;
+        span.text = None; // consumed
+
+        Ok(())
+    } else {
+        // Build a diagnostic showing what the lines actually contain
+        let mut diagnostic = format!(
+            "{label}: text not found in L{}–L{} of {}\n\n",
+            span.start_line_number, span.end_line_number, span.file_path
+        );
+        diagnostic.push_str("  Searched for:\n");
+        diagnostic.push_str(&format!("    \"{needle}\"\n\n"));
+        diagnostic.push_str("  Actual content of those lines:\n");
+        for (i, line_idx) in (start_idx..=end_idx).enumerate() {
+            diagnostic.push_str(&format!(
+                "    L{}: \"{}\"\n",
+                span.start_line_number + i as i32,
+                file_lines[line_idx]
+            ));
+        }
+
+        // Check for near-matches: case-insensitive or trimmed whitespace
+        let needle_lower = needle.to_lowercase();
+        let region_lower = region.to_lowercase();
+        if region_lower.contains(&needle_lower) {
+            diagnostic.push_str("\n  Hint: a case-insensitive match was found. Check capitalization.\n");
+        } else {
+            // Check if any individual line contains a substantial substring
+            let needle_trimmed = needle.trim();
+            if !needle_trimmed.is_empty() && region.contains(needle_trimmed) {
+                diagnostic.push_str("\n  Hint: a match was found after trimming whitespace from your search text.\n");
+            }
+        }
+
+        Err(diagnostic)
+    }
 }
 
 fn validate_span(span: &SourceSpan, label: &str, repo_root: &Path) -> Result<(), String> {
@@ -170,11 +269,30 @@ fn normalize_to_repo_root(span: &mut SourceSpan, repo_root: &Path) -> Result<(),
     Ok(())
 }
 
+fn ensure_columns_present(span: &SourceSpan, label: &str) -> Result<(), String> {
+    if span.text.is_none() && (span.start_column == 0 || span.end_column == 0) {
+        return Err(format!(
+            "{label}: must provide either \"text\" or both \"start_column\" and \"end_column\""
+        ));
+    }
+    Ok(())
+}
+
 fn validate_link(link: &mut LinkInput, repo_root: &Path) -> Result<(), String> {
     normalize_to_repo_root(&mut link.here, repo_root)?;
-    normalize_to_repo_root(&mut link.there, repo_root)?;
+    ensure_columns_present(&link.here, "here")?;
+    resolve_text_to_columns(&mut link.here, "here", repo_root)?;
     validate_span(&link.here, "here", repo_root)?;
-    validate_span(&link.there, "there", repo_root)?;
+    if link.there.is_empty() {
+        return Err("there: must contain at least one target span".to_string());
+    }
+    for (i, target) in link.there.iter_mut().enumerate() {
+        let label = format!("there[{i}]");
+        normalize_to_repo_root(target, repo_root)?;
+        ensure_columns_present(target, &label)?;
+        resolve_text_to_columns(target, &label, repo_root)?;
+        validate_span(target, &label, repo_root)?;
+    }
     Ok(())
 }
 
@@ -240,9 +358,8 @@ async fn insert_link(
         r#"
         INSERT INTO links (
             id, snapshot_id, link_type,
-            here_file_path, here_start_line, here_start_column, here_end_line, here_end_column,
-            there_file_path, there_start_line, there_start_column, there_end_line, there_end_column
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            file_path, start_line, start_column, end_line, end_column
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         "#,
     )
     .bind(id)
@@ -253,41 +370,89 @@ async fn insert_link(
     .bind(link.here.start_column)
     .bind(link.here.end_line_number)
     .bind(link.here.end_column)
-    .bind(&link.there.file_path)
-    .bind(link.there.start_line_number)
-    .bind(link.there.start_column)
-    .bind(link.there.end_line_number)
-    .bind(link.there.end_column)
     .execute(pool)
     .await
     .map_err(|e| format!("Database error: {e}"))?;
+
+    for target in &link.there {
+        let target_id = uuid::Uuid::new_v4();
+        sqlx::query(
+            r#"
+            INSERT INTO link_targets (
+                id, link_id,
+                file_path, start_line, start_column, end_line, end_column
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+            "#,
+        )
+        .bind(target_id)
+        .bind(id)
+        .bind(&target.file_path)
+        .bind(target.start_line_number)
+        .bind(target.start_column)
+        .bind(target.end_line_number)
+        .bind(target.end_column)
+        .execute(pool)
+        .await
+        .map_err(|e| format!("Database error: {e}"))?;
+    }
 
     Ok(id)
 }
 
 #[derive(sqlx::FromRow)]
-struct LinkRow {
+struct LinkHeaderRow {
+    id: uuid::Uuid,
     link_type: String,
-    here_file_path: String,
-    here_start_line: i32,
-    here_start_column: i32,
-    here_end_line: i32,
-    here_end_column: i32,
-    there_file_path: String,
-    there_start_line: i32,
-    there_start_column: i32,
-    there_end_line: i32,
-    there_end_column: i32,
+    file_path: String,
+    start_line: i32,
+    start_column: i32,
+    end_line: i32,
+    end_column: i32,
     repo_path: String,
     commit_hash: String,
 }
 
-async fn fetch_link(pool: &PgPool, id: uuid::Uuid) -> Result<LinkRow, String> {
-    sqlx::query_as::<_, LinkRow>(
+#[derive(sqlx::FromRow)]
+struct TargetRow {
+    file_path: String,
+    start_line: i32,
+    start_column: i32,
+    end_line: i32,
+    end_column: i32,
+}
+
+struct LinkRow {
+    link_type: String,
+    file_path: String,
+    start_line: i32,
+    start_column: i32,
+    end_line: i32,
+    end_column: i32,
+    targets: Vec<TargetRow>,
+    repo_path: String,
+    commit_hash: String,
+}
+
+async fn fetch_targets(pool: &PgPool, link_id: uuid::Uuid) -> Result<Vec<TargetRow>, String> {
+    sqlx::query_as::<_, TargetRow>(
         r#"
-        SELECT l.link_type,
-               l.here_file_path, l.here_start_line, l.here_start_column, l.here_end_line, l.here_end_column,
-               l.there_file_path, l.there_start_line, l.there_start_column, l.there_end_line, l.there_end_column,
+        SELECT file_path, start_line, start_column, end_line, end_column
+        FROM link_targets
+        WHERE link_id = $1
+        ORDER BY file_path, start_line
+        "#,
+    )
+    .bind(link_id)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| format!("Database error: {e}"))
+}
+
+async fn fetch_link(pool: &PgPool, id: uuid::Uuid) -> Result<LinkRow, String> {
+    let header = sqlx::query_as::<_, LinkHeaderRow>(
+        r#"
+        SELECT l.id, l.link_type,
+               l.file_path, l.start_line, l.start_column, l.end_line, l.end_column,
                s.repo_path, s.commit_hash
         FROM links l
         JOIN snapshots s ON l.snapshot_id = s.id
@@ -298,24 +463,55 @@ async fn fetch_link(pool: &PgPool, id: uuid::Uuid) -> Result<LinkRow, String> {
     .fetch_optional(pool)
     .await
     .map_err(|e| format!("Database error: {e}"))?
-    .ok_or_else(|| format!("Link not found: {id}"))
+    .ok_or_else(|| format!("Link not found: {id}"))?;
+
+    let targets = fetch_targets(pool, header.id).await?;
+
+    Ok(LinkRow {
+        link_type: header.link_type,
+        file_path: header.file_path,
+        start_line: header.start_line,
+        start_column: header.start_column,
+        end_line: header.end_line,
+        end_column: header.end_column,
+        targets,
+        repo_path: header.repo_path,
+        commit_hash: header.commit_hash,
+    })
 }
 
 async fn fetch_all_links(pool: &PgPool) -> Result<Vec<LinkRow>, String> {
-    sqlx::query_as::<_, LinkRow>(
+    let headers = sqlx::query_as::<_, LinkHeaderRow>(
         r#"
-        SELECT l.link_type,
-               l.here_file_path, l.here_start_line, l.here_start_column, l.here_end_line, l.here_end_column,
-               l.there_file_path, l.there_start_line, l.there_start_column, l.there_end_line, l.there_end_column,
+        SELECT l.id, l.link_type,
+               l.file_path, l.start_line, l.start_column, l.end_line, l.end_column,
                s.repo_path, s.commit_hash
         FROM links l
         JOIN snapshots s ON l.snapshot_id = s.id
-        ORDER BY s.repo_path, s.commit_hash, l.here_file_path, l.here_start_line
+        ORDER BY s.repo_path, s.commit_hash, l.file_path, l.start_line
         "#,
     )
     .fetch_all(pool)
     .await
-    .map_err(|e| format!("Database error: {e}"))
+    .map_err(|e| format!("Database error: {e}"))?;
+
+    let mut links = Vec::with_capacity(headers.len());
+    for header in headers {
+        let targets = fetch_targets(pool, header.id).await?;
+        links.push(LinkRow {
+            link_type: header.link_type,
+            file_path: header.file_path,
+            start_line: header.start_line,
+            start_column: header.start_column,
+            end_line: header.end_line,
+            end_column: header.end_column,
+            targets,
+            repo_path: header.repo_path,
+            commit_hash: header.commit_hash,
+        });
+    }
+
+    Ok(links)
 }
 
 fn is_local_match(repo_path: &str, commit_hash: &str) -> bool {
@@ -392,18 +588,11 @@ fn print_link(link: &LinkRow, local: bool, repo_root: Option<&Path>) -> Result<(
         }
     };
 
-    let here_content = read_file(&link.here_file_path)?;
-    let there_content = read_file(&link.there_file_path)?;
-
+    let here_content = read_file(&link.file_path)?;
     let here_span = extract_span(
         &here_content,
-        link.here_start_line, link.here_start_column,
-        link.here_end_line, link.here_end_column,
-    );
-    let there_span = extract_span(
-        &there_content,
-        link.there_start_line, link.there_start_column,
-        link.there_end_line, link.there_end_column,
+        link.start_line, link.start_column,
+        link.end_line, link.end_column,
     );
 
     let source = if local { "local" } else { "GitHub API" };
@@ -411,17 +600,26 @@ fn print_link(link: &LinkRow, local: bool, repo_root: Option<&Path>) -> Result<(
     println!("# {icon} Link\n");
     println!("> `{}@{:.8}` via {source}\n", link.repo_path, link.commit_hash);
     println!("## here — L{}:{} → L{}:{}\n",
-        link.here_start_line, link.here_start_column,
-        link.here_end_line, link.here_end_column,
+        link.start_line, link.start_column,
+        link.end_line, link.end_column,
     );
-    println!("`{}`\n", link.here_file_path);
-    println!("```python\n{here_span}\n```\n");
-    println!("## there — L{}:{} → L{}:{}\n",
-        link.there_start_line, link.there_start_column,
-        link.there_end_line, link.there_end_column,
-    );
-    println!("`{}`\n", link.there_file_path);
-    println!("```python\n{there_span}\n```");
+    println!("`{}`\n", link.file_path);
+    println!("```\n{here_span}\n```\n");
+
+    for (i, target) in link.targets.iter().enumerate() {
+        let there_content = read_file(&target.file_path)?;
+        let there_span = extract_span(
+            &there_content,
+            target.start_line, target.start_column,
+            target.end_line, target.end_column,
+        );
+        println!("## there[{i}] — L{}:{} → L{}:{}\n",
+            target.start_line, target.start_column,
+            target.end_line, target.end_column,
+        );
+        println!("`{}`\n", target.file_path);
+        println!("```\n{there_span}\n```\n");
+    }
 
     Ok(())
 }
@@ -473,10 +671,75 @@ async fn main() {
                 Err(e) => fail(&e),
             };
 
+            let target_count = link.there.len();
             match insert_link(&pool, snapshot_id, &link).await {
-                Ok(id) => println!("Link created: {id} (snapshot: {repo_path}@{commit_hash:.8})"),
+                Ok(id) => println!("Link created: {id} ({target_count} target{}, snapshot: {repo_path}@{commit_hash:.8})",
+                    if target_count == 1 { "" } else { "s" }),
                 Err(e) => fail(&e),
             }
+        }
+        Commands::Stats => {
+            let repo_path = match gh_repo_name() {
+                Ok(p) => p,
+                Err(e) => fail(&e),
+            };
+            let commit_hash = match git_commit_hash() {
+                Ok(h) => h,
+                Err(e) => fail(&e),
+            };
+
+            let database_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
+                fail("DATABASE_URL environment variable is not set");
+            });
+
+            let pool = PgPool::connect(&database_url)
+                .await
+                .unwrap_or_else(|e| fail(&format!("Failed to connect to database: {e}")));
+
+            #[derive(sqlx::FromRow)]
+            struct TypeCount {
+                link_type: String,
+                count: i64,
+            }
+
+            let rows = sqlx::query_as::<_, TypeCount>(
+                r#"
+                SELECT l.link_type, COUNT(*) as count
+                FROM links l
+                JOIN snapshots s ON l.snapshot_id = s.id
+                WHERE s.repo_path = $1 AND s.commit_hash = $2
+                GROUP BY l.link_type
+                "#,
+            )
+            .bind(&repo_path)
+            .bind(&commit_hash)
+            .fetch_all(&pool)
+            .await
+            .unwrap_or_else(|e| fail(&format!("Database error: {e}")));
+
+            let mut connects: i64 = 0;
+            let mut contradicts: i64 = 0;
+            for row in &rows {
+                match row.link_type.as_str() {
+                    "CONNECTS" => connects = row.count,
+                    "CONTRADICTS" => contradicts = row.count,
+                    _ => {}
+                }
+            }
+
+            let total = connects + contradicts;
+            if total == 0 {
+                println!("No links found for snapshot {repo_path}@{:.8}", commit_hash);
+                return;
+            }
+
+            let pct_contradicts = (contradicts as f64 / total as f64) * 100.0;
+            let pct_connects = (connects as f64 / total as f64) * 100.0;
+
+            println!("Snapshot: {repo_path}@{:.8}\n", commit_hash);
+            println!("  CONNECTS:    {connects:>4}  ({pct_connects:.1}%)");
+            println!("  CONTRADICTS: {contradicts:>4}  ({pct_contradicts:.1}%)");
+            println!("  Total:       {total:>4}");
         }
         Commands::Print { id, all } => {
             let database_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {

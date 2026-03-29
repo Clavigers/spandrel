@@ -60,15 +60,19 @@ The JSON schema:
     "end_line_number": 10,
     "end_column": 40
   },
-  "there": {
-    "file_path": "path/to/other/file",
-    "start_line_number": 5,
-    "start_column": 1,
-    "end_line_number": 20,
-    "end_column": 80
-  }
+  "there": [
+    {
+      "file_path": "path/to/other/file",
+      "start_line_number": 5,
+      "start_column": 1,
+      "end_line_number": 20,
+      "end_column": 80
+    }
+  ]
 }
 ```
+
+`there` is an array — a single source span can connect to multiple targets. One target is fine; don't force extra links that aren't there.
 
 File paths are relative to the repo root or your current working directory — the CLI normalizes them. The CLI will reject the link if either file doesn't exist or if a span exceeds the file's line count.
 
@@ -77,7 +81,7 @@ You do not provide the repo or commit. The CLI detects the current repository (v
 ### Viewing a link
 
 ```bash
-spandrel pretty_print <uuid>
+spandrel print <uuid>
 ```
 
 This outputs markdown showing the actual content of both spans. If you are in the same repo at the same commit, it reads from local files. Otherwise, it fetches the content from GitHub's API.
