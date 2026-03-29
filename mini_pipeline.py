@@ -1,4 +1,6 @@
+from gitingest import ingest
 import asyncio
+
 
 
 async def send_to_claude_agent(chunk: str) -> None:
@@ -6,11 +8,19 @@ async def send_to_claude_agent(chunk: str) -> None:
     print(f"-----→ sending chunk ({len(chunk)} chars):\n{chunk}")
 
 
-async def producer(data: str, queue: asyncio.Queue, chunk_size: int = 200) -> None:
-    for i in range(0, len(data), chunk_size):
-        chunk = data[i : i + chunk_size]
+async def producer(repo_url: str, queue: asyncio.Queue, chunk_size: int = 200):
+    summary, tree, content = await asyncio.to_thread(ingest, repo_url)
+    lines = content.splitlines(keepends=True)
+    for i in range(0, len(lines), chunk_size):
+        chunk = "".join(lines[i : i + chunk_size])
         await queue.put(chunk)
-    await queue.put(None)  # signal done
+    await queue.put(None)
+
+# async def producer(data: str, queue: asyncio.Queue, chunk_size: int = 200) -> None:
+#     for i in range(0, len(data), chunk_size):
+#         chunk = data[i : i + chunk_size]
+#         await queue.put(chunk)
+#     await queue.put(None)  # signal done
 
 
 async def consumer(queue: asyncio.Queue) -> None:
@@ -30,6 +40,9 @@ if __name__ == "__main__":
     import sys
     from pathlib import Path
 
-    path = sys.argv[1] if len(sys.argv) > 1 else __file__
-    source = Path(path).read_text()
-    asyncio.run(main(source))
+    # path = sys.argv[1] if len(sys.argv) > 1 else __file__
+    path = 'https://github.com/gillespie-alex/C_Data_Structures/tree/master'
+    # print(path)
+    # source = Path(path).read_text()
+    # print(source)
+    asyncio.run(main(path))
