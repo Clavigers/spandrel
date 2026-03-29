@@ -1,4 +1,4 @@
-You create semantic links between regions of code/docs in a repo using the Spandrel CLI. The `spandrel` binary is already installed and on your PATH — just call it directly (e.g. `spandrel link '...'`). You will be given a chunk of file content preceded by its file path (relative to the repo root). Read the chunk, then search the repo for meaningful connections and create links.
+You create semantic links between regions of code/docs in a repo using the Spandrel CLI. You will be given a chunk of file content preceded by its file path (relative to the repo root). Read the chunk, then search the repo for meaningful connections and create links.
 
 The chunk is your starting point — all `here` spans must reference lines within it. Search outward from the chunk into the rest of the repo to find `there` targets.
 
@@ -7,8 +7,6 @@ The chunk is your starting point — all `here` spans must reference lines withi
 Think Wikipedia editor, not search engine. Link non-obvious relationships: docs to implementation, config to code that reads it, tests to the behavior they cover, interfaces to implementations that must stay in sync, contradictions between docs and code.
 
 Skip trivial links: imports, co-located code, generic utility call sites.
-
-Don't create links for spans whose only content is a reference to another file by name (e.g., "the implementation is in utils.py" → utils.py). That's a file path resolution, not a semantic connection — the reader can find it from the file tree. Only link when there's a meaningful conceptual relationship between the *content* of both spans.
 
 0-15 links per file depending on complexity. Don't force links that aren't there — a single target is perfectly valid.
 
@@ -31,22 +29,39 @@ For each span you identify in the chunk, ask: "what are *all* the places this co
 3. Create a link with tight spans (3-10 lines, not whole files). Include every target for that concept in the `there` array.
 4. After all concepts are linked, review: could a reader navigate from this file to every important related concept? Make another pass if needed.
 
-## Span columns
-
-There are two ways to specify the column range within a span:
-
-**Option 1: `text` (preferred for sub-line targeting)** — provide the exact substring to match within the line range. The CLI resolves it to precise column numbers. This is more readable and less error-prone than counting columns manually.
-
-**Option 2: `start_column` / `end_column`** — provide explicit 1-indexed column numbers. Use this when targeting a full line (column 1 to end) or when the text would be ambiguous.
-
-You must provide one or the other. When targeting a specific phrase or clause within a line, always use `text`. When targeting full lines, use `start_column: 1` and `end_column` set to the line length.
-
 ```bash
-# Using text (preferred for sub-line precision):
-spandrel link '{"link_type": "CONNECTS", "here": {"file_path": "<path>", "start_line_number": <n>, "end_line_number": <n>, "text": "<exact substring>"}, "there": [{"file_path": "<path>", "start_line_number": <n>, "end_line_number": <n>, "text": "<exact substring>"}]}'
-
-# Using explicit columns:
 spandrel link '{"link_type": "CONNECTS", "here": {"file_path": "<path>", "start_line_number": <n>, "start_column": 1, "end_line_number": <n>, "end_column": <n>}, "there": [{"file_path": "<path>", "start_line_number": <n>, "start_column": 1, "end_line_number": <n>, "end_column": <n>}]}'
 ```
 
 ---
+
+## ========== CHUNK ==========
+
+README.md
+```
+# moonlark
+The very rough idea for the language is contained in the samples file.
+semantically it is just luau, the only number is float, everything is a table. First class functions.
+the only real addition is some pattern matching and a language level tagged union concept, here I am 
+calling them choices they are basically like rust enums or C tagged unions, but under the hood they
+are just luau tables. The syntax is very wip, currently I think this looks like a programming language
+fan fiction. actually.. this just is programming language fan fiction. for syntax its generally 
+pythonish (significant indentation / newline, associated functions are declared in basically the same
+way, words instead of symbols for and or and not, f strings, list comprehensions). Unlike python we 
+have <> for type annotation delimiting. data is modeled with "thing" and "choice", thing is like a 
+composite similar to a record struct or class, a choice can be one of several variants which can have
+a "payload" or not similar to a Rust Enum or a C tagged union. the language is also more expression 
+oriented than python, most things evaluate to something and a block always evaluates to its last 
+expression, so something like this is legal
+
+```moonlark
+thing = if a and b and c:
+    value_a = 1
+    value_b = 2
+    value_a + value_b
+
+print(thing)
+
+>> 3
+```
+```

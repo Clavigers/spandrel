@@ -1,6 +1,18 @@
-from gitingest import ingest
-import asyncio
+"""Chunker: ingests a repo via gitingest and pushes chunks to Hatchet."""
+
+import sys
 from dataclasses import dataclass
+
+from gitingest import ingest
+from dotenv import load_dotenv
+from hatchet_sdk import Hatchet
+
+from worker import link_chunk_workflow, ChunkPayload
+
+load_dotenv()
+
+
+CHUNK_SIZE = 5000
 
 
 def _is_separator(line: str) -> bool:
@@ -14,31 +26,26 @@ class Chunk:
     file_path: str
 
 
-async def send_to_claude_agent(chunk: Chunk) -> None:
-    """Stub — replace with your real Claude dispatch."""
-    print(f"-----→ [{chunk.file_path}] sending chunk ({len(chunk.content)} chars):\n{chunk.content}")
-
-
-async def producer(repo_url: str, queue: asyncio.Queue, chunk_size: int = 300):
-    summary, tree, content = await asyncio.to_thread(ingest, repo_url)
+def chunk_repo(repo_url: str, chunk_size: int = CHUNK_SIZE) -> list[Chunk]:
+    """Ingest a repo and split it into chunks."""
+    _summary, _tree, content = ingest(repo_url)
     lines = content.splitlines(keepends=True)
 
+    chunks: list[Chunk] = []
     file_header = ""
     current_lines: list[str] = []
     current_chars = 0
     i = 0
 
     while i < len(lines):
-        # Detect 3-line file separator: ====, File: path, ====
         if (
             _is_separator(lines[i])
             and i + 2 < len(lines)
             and lines[i + 1].startswith("FILE: ")
             and _is_separator(lines[i + 2])
         ):
-            # Flush current chunk before switching files
             if current_lines:
-                await queue.put(Chunk(content="".join(current_lines), file_path=file_header))
+                chunks.append(Chunk(content="".join(current_lines), file_path=file_header))
                 current_lines = []
                 current_chars = 0
 
@@ -50,46 +57,33 @@ async def producer(repo_url: str, queue: asyncio.Queue, chunk_size: int = 300):
         current_chars += len(lines[i])
 
         if current_chars >= chunk_size:
-            await queue.put(Chunk(content="".join(current_lines), file_path=file_header))
+            chunks.append(Chunk(content="".join(current_lines), file_path=file_header))
             current_lines = []
             current_chars = 0
 
         i += 1
 
-    # Flush any remaining lines
     if current_lines:
-        await queue.put(Chunk(content="".join(current_lines), file_path=file_header))
+        chunks.append(Chunk(content="".join(current_lines), file_path=file_header))
 
-    await queue.put(None)
-
-
-# async def producer(data: str, queue: asyncio.Queue, chunk_size: int = 200) -> None:
-#     for i in range(0, len(data), chunk_size):
-#         chunk = data[i : i + chunk_size]
-#         await queue.put(chunk)
-#     await queue.put(None)  # signal done
+    return chunks
 
 
-async def consumer(queue: asyncio.Queue[Chunk | None]) -> None:
-    while True:
-        chunk = await queue.get()
-        if chunk is None:
-            break
-        await send_to_claude_agent(chunk)
+def main(repo_url: str):
+    chunks = chunk_repo(repo_url)
+    print(f"Pushing {len(chunks)} chunks to Hatchet...")
 
+    for i, chunk in enumerate(chunks):
+        link_chunk_workflow.run_no_wait(
+            input=ChunkPayload(repo_url=repo_url, file_path=chunk.file_path, content=chunk.content)
+        )
+        print(f"\n===== CHUNK [{i + 1}/{len(chunks)}] {chunk.file_path} ({len(chunk.content)} chars) =====")
+        print(chunk.content)
+        print(f"===== END CHUNK [{i + 1}/{len(chunks)}] =====")
 
-async def main(source: str) -> None:
-    queue: asyncio.Queue[Chunk | None] = asyncio.Queue(maxsize=4)
-    await asyncio.gather(producer(source, queue), consumer(queue))
+    print("Done.")
 
 
 if __name__ == "__main__":
-    import sys
-    from pathlib import Path
-
-    # path = sys.argv[1] if len(sys.argv) > 1 else __file__
-    path = 'https://github.com/gillespie-alex/C_Data_Structures/tree/master'
-    # print(path)
-    # source = Path(path).read_text()
-    # print(source)
-    asyncio.run(main(path))
+    repo_url = sys.argv[1] if len(sys.argv) > 1 else "https://github.com/sadosystems/spandrel"
+    main(repo_url)

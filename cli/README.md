@@ -14,9 +14,11 @@ Creates a validated link between two source spans.
 {
   "link_type": "CONNECTS" | "CONTRADICTS",
   "here": SourceSpan,
-  "there": SourceSpan
+  "there": [SourceSpan, ...]
 }
 ```
+
+`there` is an array of one or more target spans. A single target is valid.
 
 **SourceSpan schema:**
 
@@ -33,7 +35,7 @@ Creates a validated link between two source spans.
 **Example:**
 
 ```bash
-spandrel link '{"link_type": "CONNECTS", "here": {"file_path": "src/main.rs", "start_line_number": 1, "start_column": 1, "end_line_number": 5, "end_column": 10}, "there": {"file_path": "src/lib.rs", "start_line_number": 10, "start_column": 1, "end_line_number": 15, "end_column": 20}}'
+spandrel link '{"link_type": "CONNECTS", "here": {"file_path": "src/main.rs", "start_line_number": 1, "start_column": 1, "end_line_number": 5, "end_column": 10}, "there": [{"file_path": "src/lib.rs", "start_line_number": 10, "start_column": 1, "end_line_number": 15, "end_column": 20}]}'
 ```
 
 ### `spandrel print <UUID>`
@@ -84,22 +86,30 @@ Unique constraint on `(repo_path, commit_hash)`.
 
 **Schema (links table):**
 
-| Column             | Type      | Notes                          |
-|--------------------|-----------|--------------------------------|
-| id                 | UUID      | Primary key, generated         |
-| snapshot_id        | UUID      | FK to snapshots                |
-| link_type          | TEXT      | `CONNECTS` or `CONTRADICTS`       |
-| here_file_path     | TEXT      |                                |
-| here_start_line    | INTEGER   |                                |
-| here_start_column  | INTEGER   |                                |
-| here_end_line      | INTEGER   |                                |
-| here_end_column    | INTEGER   |                                |
-| there_file_path    | TEXT      |                                |
-| there_start_line   | INTEGER   |                                |
-| there_start_column | INTEGER   |                                |
-| there_end_line     | INTEGER   |                                |
-| there_end_column   | INTEGER   |                                |
-| created_at         | TIMESTAMP | Defaults to now()              |
+| Column       | Type      | Notes                        |
+|--------------|-----------|------------------------------|
+| id           | UUID      | Primary key, generated       |
+| snapshot_id  | UUID      | FK to snapshots              |
+| link_type    | TEXT      | `CONNECTS` or `CONTRADICTS`  |
+| file_path    | TEXT      | Source span file              |
+| start_line   | INTEGER   |                              |
+| start_column | INTEGER   |                              |
+| end_line     | INTEGER   |                              |
+| end_column   | INTEGER   |                              |
+| created_at   | TIMESTAMP | Defaults to now()            |
+
+**Schema (link_targets table):**
+
+| Column       | Type      | Notes                        |
+|--------------|-----------|------------------------------|
+| id           | UUID      | Primary key, generated       |
+| link_id      | UUID      | FK to links (CASCADE delete) |
+| file_path    | TEXT      | Target span file             |
+| start_line   | INTEGER   |                              |
+| start_column | INTEGER   |                              |
+| end_line     | INTEGER   |                              |
+| end_column   | INTEGER   |                              |
+| created_at   | TIMESTAMP | Defaults to now()            |
 
 ## Prerequisites
 
