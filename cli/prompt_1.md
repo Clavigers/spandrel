@@ -50,11 +50,3 @@ spandrel link '{"link_type": "CONNECTS", "here": {"file_path": "<path>", "start_
 ```
 
 ---
-
-## ========== CHUNK ==========
-
-`{{FILE_PATH}}`
-
-```
-{{CHUNK}}
-```

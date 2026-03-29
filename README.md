@@ -4,5 +4,3 @@ to reset the db:
 
 to install the cli run:
 ./setup.sh
-
-***REDACTED***
