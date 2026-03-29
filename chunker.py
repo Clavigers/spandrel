@@ -13,7 +13,7 @@ from worker import link_chunk_workflow, ChunkPayload
 load_dotenv()
 
 
-CHUNK_SIZE = 5000
+CHUNK_SIZE = 2000
 SKIP_SUFFIXES = [".lock", ".gitignore", ".python-version"]
 
 
@@ -26,6 +26,10 @@ def _is_separator(line: str) -> bool:
 class Chunk:
     content: str
     file_path: str
+
+def should_skip_file(file_path: str) -> bool:
+    path = Path(file_path)
+    return path.suffix == ".lock" or path.name in {".gitignore", ".python-version"}
 
 
 def chunk_repo(repo_url: str, chunk_size: int = CHUNK_SIZE) -> list[Chunk]:
@@ -46,11 +50,11 @@ def chunk_repo(repo_url: str, chunk_size: int = CHUNK_SIZE) -> list[Chunk]:
             and lines[i + 1].startswith("FILE: ")
             and _is_separator(lines[i + 2])
         ):
-            if current_lines:
+            if current_lines and not should_skip_file(file_header):
                 chunks.append(Chunk(content="".join(current_lines), file_path=file_header))
-                current_lines = []
-                current_chars = 0
 
+            current_lines = []
+            current_chars = 0
             file_header = lines[i + 1].rstrip("\r\n").removeprefix("FILE: ")
             i += 3
             continue
@@ -59,21 +63,17 @@ def chunk_repo(repo_url: str, chunk_size: int = CHUNK_SIZE) -> list[Chunk]:
         current_chars += len(lines[i])
 
         if current_chars >= chunk_size:
-            if Path(file_header).suffix in SKIP_SUFFIXES:
-                current_lines = []
-                current_chars = 0
-                continue
-            chunks.append(Chunk(content="".join(current_lines), file_path=file_header))
+            if not should_skip_file(file_header):
+                chunks.append(Chunk(content="".join(current_lines), file_path=file_header))
             current_lines = []
             current_chars = 0
 
         i += 1
 
-    if current_lines:
+    if current_lines and not should_skip_file(file_header):
         chunks.append(Chunk(content="".join(current_lines), file_path=file_header))
 
     return chunks
-
 
 def main(repo_url: str):
     chunks = chunk_repo(repo_url)
@@ -84,8 +84,8 @@ def main(repo_url: str):
             input=ChunkPayload(repo_url=repo_url, file_path=chunk.file_path, content=chunk.content)
         )
         print(f"\n===== CHUNK [{i + 1}/{len(chunks)}] {chunk.file_path} ({len(chunk.content)} chars) =====")
-        # print(chunk.content)
-        # print(f"===== END CHUNK [{i + 1}/{len(chunks)}] =====")
+        print(chunk.content)
+        print(f"===== END CHUNK [{i + 1}/{len(chunks)}] =====")
 
     print("Done.")
 
