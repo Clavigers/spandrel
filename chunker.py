@@ -3,6 +3,7 @@
 import sys
 from dataclasses import dataclass
 
+from pathlib import Path
 from gitingest import ingest
 from dotenv import load_dotenv
 from hatchet_sdk import Hatchet
@@ -13,6 +14,7 @@ load_dotenv()
 
 
 CHUNK_SIZE = 5000
+SKIP_SUFFIXES = [".lock", ".gitignore", ".python-version"]
 
 
 def _is_separator(line: str) -> bool:
@@ -57,6 +59,10 @@ def chunk_repo(repo_url: str, chunk_size: int = CHUNK_SIZE) -> list[Chunk]:
         current_chars += len(lines[i])
 
         if current_chars >= chunk_size:
+            if Path(file_header).suffix in SKIP_SUFFIXES:
+                current_lines = []
+                current_chars = 0
+                continue
             chunks.append(Chunk(content="".join(current_lines), file_path=file_header))
             current_lines = []
             current_chars = 0
@@ -78,8 +84,8 @@ def main(repo_url: str):
             input=ChunkPayload(repo_url=repo_url, file_path=chunk.file_path, content=chunk.content)
         )
         print(f"\n===== CHUNK [{i + 1}/{len(chunks)}] {chunk.file_path} ({len(chunk.content)} chars) =====")
-        print(chunk.content)
-        print(f"===== END CHUNK [{i + 1}/{len(chunks)}] =====")
+        # print(chunk.content)
+        # print(f"===== END CHUNK [{i + 1}/{len(chunks)}] =====")
 
     print("Done.")
 

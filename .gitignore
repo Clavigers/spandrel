@@ -1,3 +1,5 @@
 target
 .env
+.venv
 repos/
+.python-version
