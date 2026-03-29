@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spandrel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #0d1117;
+            font-family: sans-serif;
+        }
+
+        .box {
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 40px;
+            width: 480px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        h1 {
+            color: #e6edf3;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        p {
+            color: #8b949e;
+            font-size: 14px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px 12px;
+            background-color: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #e6edf3;
+            font-size: 14px;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: #58a6ff;
+        }
+
+        button {
+            padding: 10px;
+            background-color: #238636;
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #2ea043;
+        }
+
+        #status {
+            font-size: 13px;
+            color: #8b949e;
+            text-align: center;
+            min-height: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h1>Spandrel</h1>
+        <p>Paste a GitHub repository URL to chunk it.</p>
+        <input type="text" id="repoInput" placeholder="https://github.com/owner/repo" />
+        <button onclick="submitRepo()">Submit</button>
+        <div id="status"></div>
+    </div>
+
+    <script>
+        async function submitRepo() {
+            const url = document.getElementById("repoInput").value.trim();
+            const status = document.getElementById("status");
+
+            if (!url) {
+                status.textContent = "Please enter a URL.";
+                return;
+            }
+
+            status.textContent = "Submitting...";
+
+            const response = await fetch("/submit", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ repo_url: url }),
+            });
+
+            if (response.ok) {
+                status.textContent = "Received! Processing will begin shortly.";
+            } else {
+                status.textContent = "Something went wrong. Please try again.";
+            }
+        }
+    </script>
+</body>
+</html>
