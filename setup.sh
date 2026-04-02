@@ -55,6 +55,20 @@ if ! grep -q 'DATABASE_URL' "$SHELL_RC" 2>/dev/null; then
     echo "Added DATABASE_URL to $SHELL_RC"
 fi
 
+# ── Create database & apply schema ───────────────────────────────────
+DB_URL="${DATABASE_URL:-postgres://postgres:postgres@localhost:5432/spandrel}"
+DB_NAME="spandrel"
+
+if ! psql "$DB_URL" -c '\q' 2>/dev/null; then
+    echo "Creating database $DB_NAME..."
+    createdb -U postgres "$DB_NAME"
+    echo "Database $DB_NAME created."
+fi
+
+echo "Applying schema..."
+psql "$DB_URL" -f "$SCRIPT_DIR/cli/schema.sql"
+echo "Schema applied."
+
 echo "Restart your shell or run: source $SHELL_RC"
 
 echo "Done. Run 'spandrel help' to get started."

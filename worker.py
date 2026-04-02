@@ -97,7 +97,7 @@ async def link_chunk(input: ChunkPayload, ctx: Context) -> dict:
 
 
 def main():
-    worker = hatchet.worker(name="spandrel-linker", max_concurrency=5)
+    worker = hatchet.worker(name="spandrel-linker")
     worker.register_workflow(link_chunk_workflow)
     print("Spandrel worker listening for chunks...")
     worker.start()
