@@ -1,4 +1,7 @@
 # spandrel
+
+https://mise.jdx.dev/installing-mise.html
+
 to reset the db:
 ./reset_db.sh
 

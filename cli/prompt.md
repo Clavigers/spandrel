@@ -4,9 +4,9 @@ The chunk is your starting point — all `here` spans must reference lines withi
 
 ## Link quality
 
-Think Wikipedia editor, not search engine. Link non-obvious relationships: docs to implementation, config to code that reads it, tests to the behavior they cover, interfaces to implementations that must stay in sync, contradictions between docs and code.
-
-Skip trivial links: imports, co-located code, generic utility call sites.
+Think Wikipedia editor
+Skip trivial links: Never link anything that can be statically checked with traditional methods.
+Don't force links that aren't there — a single target is perfectly valid.
 
 Don't create links for spans whose only content is a reference to another file by name (e.g., "the implementation is in utils.py" → utils.py). That's a file path resolution, not a semantic connection — the reader can find it from the file tree. Only link when there's a meaningful conceptual relationship between the *content* of both spans.
 

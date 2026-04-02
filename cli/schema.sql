@@ -10,7 +10,7 @@ CREATE TABLE snapshots (
 
 CREATE TABLE links (
     id              UUID PRIMARY KEY,
-    link_type       TEXT NOT NULL CHECK (link_type IN ('CONNECTS', 'CONTRADICTS')),
+    link_type       TEXT NOT NULL CHECK (link_type IN ('CONNECTS', 'CONTRADICTS', 'DEFINES')),
     snapshot_id     UUID NOT NULL REFERENCES snapshots(id),
     file_path       TEXT    NOT NULL,
     start_line      INTEGER NOT NULL,
