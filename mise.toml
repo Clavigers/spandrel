@@ -1,0 +1,9 @@
+[env]
+_.file = ".env"
+DATABASE_URL = "postgres://postgres:postgres@localhost:5432/spandrel"
+
+[tools]
+python = "3.13"
+rust = "latest"
+github-cli = "latest"
+postgres = "17"
