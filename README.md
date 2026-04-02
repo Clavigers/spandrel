@@ -15,5 +15,5 @@ mise run setup
 ```
 Thats it. You can now run scripts like:
 ```sh
-mise install
+mise run lint
 ```
