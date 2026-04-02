@@ -1,5 +1,7 @@
 ## Getting Started
-> **Prerequisites:** Install [mise](https://mise.jdx.dev)
+> [!IMPORTANT]  
+> First install [mise](https://mise.jdx.dev).
+
 ```sh
 mise install
 mise run setup
