@@ -7,3 +7,10 @@ python = "3.13"
 rust = "latest"
 github-cli = "latest"
 postgres = "17"
+
+[tasks.lint]
+description = "Lint and format"
+run = """
+ruff check .
+ruff format --check .
+"""
