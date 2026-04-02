@@ -3,7 +3,8 @@ _.file = ".env"
 DATABASE_URL = "postgres://postgres:postgres@localhost:5432/spandrel"
 
 [tools]
-python = "3.13"
+python = "3.12"
+ruff = "latest"
 rust = "latest"
 github-cli = "latest"
 postgres = "17"
@@ -11,6 +12,6 @@ postgres = "17"
 [tasks.lint]
 description = "Lint and format"
 run = """
-ruff check .
-ruff format --check .
+ruff check --fix .
+ruff format .
 """
