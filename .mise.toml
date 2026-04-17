@@ -3,9 +3,10 @@ _.file = ".env"
 DATABASE_URL = "postgres://postgres:postgres@localhost:5432/spandrel"
 
 [tools]
-python = "3.10"
+python = "3.13"
 rust = "latest"
 github-cli = "latest"
+ruff = "latest"
 postgres = "17"
 
 [tasks]
