@@ -1,0 +1,7 @@
+[build]
+  base    = "wasteland/website"
+  command = "bunx --bun astro build"
+  publish = "dist"
+
+[build.environment]
+  BUN_VERSION = "1.3.11"
