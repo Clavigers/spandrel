@@ -1,0 +1,133 @@
+---
+import Base from '../layouts/Base.astro';
+
+const copyIcon = `<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25z"/><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25z"/></svg>`;
+---
+<Base title="spandrel — get started">
+  <section class="gs container">
+    <div class="eyebrow">Get started</div>
+    <h2>Three steps, then get out of your way.</h2>
+
+    <section class="step">
+      <h3><span class="num">01</span> Install spandrel</h3>
+      <div class="code-block">
+        <code id="install-cmd">curl https://spandrel.dev/get | sh</code>
+        <button class="copy-btn" data-cmd="install-cmd" aria-label="Copy to clipboard" set:html={copyIcon}></button>
+      </div>
+      <a href="/get_abrasive" class="more">More installation methods &rarr;</a>
+    </section>
+
+    <section class="step">
+      <h3><span class="num">02</span> Alias cargo <span class="optional">(optional)</span></h3>
+      <p>Command-line compatible with Cargo. Alias <code class="inline">cargo=spandrel</code> and keep using cargo the way you normally would.</p>
+      <div class="code-block">
+        <code id="alias-bash">echo 'alias cargo="spandrel"' &gt;&gt; ~/.bashrc &amp;&amp; source ~/.bashrc</code>
+        <button class="copy-btn" data-cmd="alias-bash" aria-label="Copy to clipboard" set:html={copyIcon}></button>
+      </div>
+      <p>For zsh, use <code class="inline">~/.zshrc</code>. For fish:</p>
+      <div class="code-block">
+        <code id="alias-fish">alias --save cargo="spandrel"</code>
+        <button class="copy-btn" data-cmd="alias-fish" aria-label="Copy to clipboard" set:html={copyIcon}></button>
+      </div>
+    </section>
+
+    <section class="step">
+      <h3><span class="num">03</span> Initialize your project</h3>
+      <p>Navigate to the root of your project and run:</p>
+      <div class="code-block">
+        <code id="setup-cmd">spandrel setup</code>
+        <button class="copy-btn" data-cmd="setup-cmd" aria-label="Copy to clipboard" set:html={copyIcon}></button>
+      </div>
+      <p>Or, if you set up the cargo alias:</p>
+      <div class="code-block">
+        <code id="setup-cargo-cmd">cargo setup</code>
+        <button class="copy-btn" data-cmd="setup-cargo-cmd" aria-label="Copy to clipboard" set:html={copyIcon}></button>
+      </div>
+      <p>This walks you through an interactive setup and creates a <code class="inline">spandrel.toml</code> at the root of your project.</p>
+    </section>
+  </section>
+</Base>
+
+<style>
+  .gs {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 32px 24px 64px;
+  }
+  h2 {
+    font-size: clamp(28px, 3.5vw, 40px);
+    margin: 12px 0 40px;
+    max-width: 600px;
+  }
+  .step {
+    margin-bottom: 48px;
+  }
+  .step h3 {
+    font-size: 20px;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .num {
+    font-family: var(--serif);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: var(--tm);
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .optional {
+    font-weight: 400;
+    font-size: 13px;
+    color: var(--tm);
+    margin-left: 6px;
+  }
+  .step p {
+    font-size: 15px;
+    color: var(--ts);
+    margin: 12px 0;
+  }
+  .code-block {
+    margin-bottom: 4px;
+    white-space: normal;
+    flex-wrap: wrap;
+  }
+  .code-block code {
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .inline {
+    color: var(--b7);
+    background: var(--bg-card);
+    border: 1px solid var(--b1);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 0.85em;
+  }
+  .more {
+    display: inline-block;
+    margin-top: 8px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--tm);
+    transition: color .2s;
+  }
+  .more:hover { color: var(--b6); }
+</style>
+
+<script>
+  const copyIcon = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25z"/><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25z"/></svg>';
+  const checkIcon = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/></svg>';
+  document.querySelectorAll<HTMLButtonElement>('.copy-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const cmdId = btn.getAttribute('data-cmd')!;
+      const code = document.getElementById(cmdId)!;
+      navigator.clipboard.writeText(code.textContent!);
+      btn.innerHTML = checkIcon;
+      setTimeout(() => { btn.innerHTML = copyIcon; }, 2000);
+    });
+  });
+</script>

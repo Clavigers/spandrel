@@ -1,0 +1,153 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base title="spandrel — demo">
+  <section class="demo container">
+    <div class="eyebrow">Watch it work</div>
+    <h2>See spandrel in action</h2>
+    <p class="lede">
+      A cold run, a change, and the feedback loop.<br />
+      Under a minute.
+    </p>
+
+    <div class="video-wrap">
+      <iframe
+        src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+        title="Spandrel Demo"
+        frameborder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowfullscreen
+      ></iframe>
+    </div>
+
+    <div class="transcript">
+      <a class="transcript-label" id="transcript-label" href="#">Prefer reading? Here's the transcript.</a>
+      <div class="transcript-preview">
+        <p>So what we're looking at here is a fresh install. The first thing we do is pull down the config — takes about two seconds — and you can already see it's picked up the project structure automatically. No manual setup, no boilerplate, nothing.</p>
+        <p>Now watch what happens when I run the first pass. It scans everything, builds a dependency graph, and just... goes. The whole pipeline resolves in under a second. That's not cached either, that's a cold run.</p>
+      </div>
+      <div class="transcript-full" id="transcript-full">
+        <p>Let's look at what actually happened under the hood. Each node in the graph was evaluated in parallel where possible. The resolver figured out the optimal order, batched what it could, and streamed the rest. You're not waiting on anything sequential unless it genuinely has to be.</p>
+        <p>And here's the part I really want to show — watch this. I'm going to change one file. Just one. See how it only re-evaluates the affected subgraph? Everything else is untouched. That's incremental resolution at work.</p>
+        <p>The feedback loop is basically instant. Change, resolve, done. You're never sitting around wondering what's happening. And if something does break, the error output tells you exactly which node failed and why. No stack trace archaeology.</p>
+        <p>That's pretty much it. Install it, point it at your project, and let it rip. The whole thing is designed to get out of your way.</p>
+      </div>
+      <button class="show-more" id="show-more">Show more</button>
+    </div>
+
+    <div class="cta">
+      <a href="/getting-started" class="btn btn-lg"><span>Get Started</span></a>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .demo {
+    text-align: center;
+    padding: 32px 24px 64px;
+    max-width: 820px;
+    margin: 0 auto;
+  }
+  h2 {
+    font-size: clamp(32px, 4.5vw, 56px);
+    margin: 16px 0 20px;
+  }
+  .lede {
+    font-size: 16px;
+    color: var(--ts);
+    margin-bottom: 32px;
+  }
+  @media (min-width: 1024px) { .lede { font-size: 18px; } }
+
+  .video-wrap {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--b1);
+    background: var(--bg-card);
+    margin-bottom: 32px;
+  }
+  .video-wrap iframe {
+    width: 100%;
+    height: 100%;
+    display: block;
+    border: 0;
+  }
+
+  .transcript {
+    text-align: left;
+    max-width: 680px;
+    margin: 0 auto 32px;
+  }
+  .transcript-label {
+    display: inline-block;
+    color: var(--b6);
+    font-size: 14px;
+    margin-bottom: 12px;
+    text-decoration: underline;
+    transition: color .2s;
+  }
+  .transcript-label:hover { color: var(--b8); }
+
+  .transcript-preview {
+    position: relative;
+    max-height: 5.4rem;
+    overflow: hidden;
+  }
+  .transcript.expanded .transcript-preview {
+    max-height: none;
+    overflow: visible;
+  }
+  .transcript-preview::after {
+    content: "";
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 5rem;
+    background: linear-gradient(transparent, var(--bg));
+    pointer-events: none;
+    transition: opacity .15s;
+  }
+  .transcript.expanded .transcript-preview::after { opacity: 0; }
+
+  .transcript p {
+    color: var(--ts);
+    font-size: 15px;
+    line-height: 1.6;
+    margin-bottom: 12px;
+    text-indent: 1.5rem;
+  }
+  .transcript-full { display: none; }
+  .transcript.expanded .transcript-full { display: block; }
+
+  .show-more {
+    font-family: var(--serif);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--tm);
+    padding: 0;
+    transition: color .2s;
+  }
+  .show-more:hover { color: var(--b6); }
+
+  .cta { margin-top: 8px; }
+</style>
+
+<script>
+  const btn = document.getElementById('show-more')!;
+  const label = document.getElementById('transcript-label')!;
+  const transcript = document.querySelector('.transcript')!;
+
+  function toggle() {
+    const expanded = transcript.classList.toggle('expanded');
+    btn.textContent = expanded ? 'Show less' : 'Show more';
+  }
+
+  btn.addEventListener('click', toggle);
+  label.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (!transcript.classList.contains('expanded')) toggle();
+    document.querySelector('.transcript-preview')!.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+</script>
