@@ -1,0 +1,126 @@
+---
+import Base from '../layouts/Base.astro';
+
+const methods = [
+  { id: 'curl', label: 'cURL', cmd: 'curl https://spandrel.dev/get | sh' },
+  { id: 'homebrew', label: 'Homebrew', cmd: 'brew install spandrel' },
+  { id: 'cargo', label: 'Cargo', cmd: 'cargo install spandrel' },
+  { id: 'npm', label: 'npm', cmd: 'npm install -g spandrel' },
+  { id: 'apt', label: 'Debian / Ubuntu', cmd: 'sudo apt install spandrel' },
+  { id: 'dnf', label: 'Fedora / RHEL', cmd: 'sudo dnf install spandrel' },
+  { id: 'pacman', label: 'Arch Linux', cmd: 'sudo pacman -S spandrel' },
+  { id: 'apk', label: 'Alpine', cmd: 'apk add spandrel' },
+  { id: 'nix', label: 'Nix', cmd: 'nix-env -iA nixpkgs.spandrel' },
+  { id: 'docker', label: 'Docker', cmd: 'docker pull spandrel/spandrel:latest' },
+  { id: 'scoop', label: 'Scoop', cmd: 'scoop install spandrel' },
+  { id: 'choco', label: 'Chocolatey', cmd: 'choco install spandrel' },
+];
+---
+<Base title="spandrel — install">
+  <section class="install container">
+    <div class="eyebrow">Install</div>
+    <h2>Get the Spandrel CLI</h2>
+    <p class="lede">Pick whichever method your machine likes best.</p>
+
+    <div class="grid">
+      {methods.map((m) => (
+        <div class="card">
+          <div class="card-label">{m.label}</div>
+          <div class="card-cmd">
+            <code>{m.cmd}</code>
+            <button class="copy-btn" data-cmd={m.cmd} aria-label="Copy to clipboard">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25z"/>
+                <path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  </section>
+</Base>
+
+<style>
+  .install {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 32px 24px 64px;
+    text-align: center;
+  }
+  h2 {
+    font-size: clamp(32px, 4vw, 48px);
+    margin: 12px 0 14px;
+  }
+  .lede {
+    font-size: 16px;
+    color: var(--ts);
+    margin-bottom: 36px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
+    text-align: left;
+  }
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--b1);
+    border-radius: 8px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: border-color .2s, background-color .2s;
+  }
+  .card:hover {
+    border-color: var(--b3);
+  }
+  .card-label {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 14px;
+    color: var(--b9);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .card-cmd {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--b0);
+    border: 1px solid var(--b1);
+    border-radius: 6px;
+    padding: 8px 10px;
+    overflow: hidden;
+  }
+  .card-cmd code {
+    color: var(--b7);
+    font-family: var(--mono);
+    font-size: 12px;
+    white-space: nowrap;
+    overflow-x: auto;
+    flex: 1;
+    user-select: all;
+  }
+  .copy-btn {
+    flex-shrink: 0;
+    padding: 4px;
+    color: var(--tm);
+    transition: color .15s;
+  }
+  .copy-btn:hover { color: var(--b6); }
+</style>
+
+<script>
+  const copyIcon = '<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25z"/><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25z"/></svg>';
+  const checkIcon = '<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/></svg>';
+  document.querySelectorAll<HTMLButtonElement>('.copy-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const cmd = btn.getAttribute('data-cmd')!;
+      navigator.clipboard.writeText(cmd);
+      btn.innerHTML = checkIcon;
+      setTimeout(() => { btn.innerHTML = copyIcon; }, 2000);
+    });
+  });
+</script>
