@@ -1,15 +1,19 @@
-# spandrel
+## Getting Started
+> [!IMPORTANT]  
+> First install [mise](https://mise.jdx.dev).
 
-https://mise.jdx.dev/installing-mise.html
+Once mise is installed, the last manual step is getting the secrets for the project.
+### Secrets
+Download the [.env file from Google Drive](https://drive.google.com/file/d/1uJFuySXRoxQtESPjDIt0V5si4sdtucjD/view?usp=drive_link) and place it in the project root.
 
-to reset the db:
-./reset_db.sh
+### Initialize The Environment
+After that, run the following commands: 
 
-to install the cli run:
-./setup.sh
-
-to run the agent worker:
-uv run python worker.py
-
-to run the chunker.py:
-uv run python chunker.py
+```sh
+mise install
+mise run setup
+```
+Thats it. You can now run scripts like:
+```sh
+mise run lint
+```

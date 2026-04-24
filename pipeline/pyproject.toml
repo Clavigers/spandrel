@@ -1,7 +1,7 @@
 [project]
-name = "spandrel"
-version = "0.1.0"
-description = "Add your description here"
+name = "spandrel_pipeline"
+version = "0.0.0"
+description = ""
 requires-python = ">=3.10"
 dependencies = [
     "claude-agent-sdk>=0.1.52",

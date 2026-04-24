@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from gitingest import ingest
 from dotenv import load_dotenv
-from hatchet_sdk import Hatchet
 
 from worker import link_chunk_workflow, ChunkPayload
 
@@ -26,6 +25,7 @@ def _is_separator(line: str) -> bool:
 class Chunk:
     content: str
     file_path: str
+
 
 def should_skip_file(file_path: str) -> bool:
     path = Path(file_path)
@@ -51,7 +51,9 @@ def chunk_repo(repo_url: str, chunk_size: int = CHUNK_SIZE) -> list[Chunk]:
             and _is_separator(lines[i + 2])
         ):
             if current_lines and not should_skip_file(file_header):
-                chunks.append(Chunk(content="".join(current_lines), file_path=file_header))
+                chunks.append(
+                    Chunk(content="".join(current_lines), file_path=file_header)
+                )
 
             current_lines = []
             current_chars = 0
@@ -64,7 +66,9 @@ def chunk_repo(repo_url: str, chunk_size: int = CHUNK_SIZE) -> list[Chunk]:
 
         if current_chars >= chunk_size:
             if not should_skip_file(file_header):
-                chunks.append(Chunk(content="".join(current_lines), file_path=file_header))
+                chunks.append(
+                    Chunk(content="".join(current_lines), file_path=file_header)
+                )
             current_lines = []
             current_chars = 0
 
@@ -75,15 +79,20 @@ def chunk_repo(repo_url: str, chunk_size: int = CHUNK_SIZE) -> list[Chunk]:
 
     return chunks
 
+
 def main(repo_url: str):
     chunks = chunk_repo(repo_url)
     print(f"Pushing {len(chunks)} chunks to Hatchet...")
 
     for i, chunk in enumerate(chunks):
         link_chunk_workflow.run_no_wait(
-            input=ChunkPayload(repo_url=repo_url, file_path=chunk.file_path, content=chunk.content)
+            input=ChunkPayload(
+                repo_url=repo_url, file_path=chunk.file_path, content=chunk.content
+            )
         )
-        print(f"\n===== CHUNK [{i + 1}/{len(chunks)}] {chunk.file_path} ({len(chunk.content)} chars) =====")
+        print(
+            f"\n===== CHUNK [{i + 1}/{len(chunks)}] {chunk.file_path} ({len(chunk.content)} chars) ====="
+        )
         print(chunk.content)
         print(f"===== END CHUNK [{i + 1}/{len(chunks)}] =====")
 
@@ -91,5 +100,7 @@ def main(repo_url: str):
 
 
 if __name__ == "__main__":
-    repo_url = sys.argv[1] if len(sys.argv) > 1 else "https://github.com/sadosystems/spandrel"
+    repo_url = (
+        sys.argv[1] if len(sys.argv) > 1 else "https://github.com/sadosystems/spandrel"
+    )
     main(repo_url)

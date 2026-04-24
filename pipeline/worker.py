@@ -14,7 +14,7 @@ load_dotenv()
 
 hatchet = Hatchet()
 
-PROMPT_FILE = Path(__file__).parent / "cli" / "prompt_1.md"
+PROMPT_FILE = Path(__file__).parent / "cli" / "prompt.md"
 REPOS_DIR = Path(__file__).parent / "repos"
 
 
@@ -37,7 +37,11 @@ def clone_or_reuse(repo_url: str) -> Path:
         repo_name = parts[0] or "unknown"
 
     # Reconstruct a cloneable URL (strip /tree/branch etc.)
-    clone_url = f"https://{parsed.netloc}/{parts[0]}/{parts[1]}.git" if len(parts) >= 2 else repo_url
+    clone_url = (
+        f"https://{parsed.netloc}/{parts[0]}/{parts[1]}.git"
+        if len(parts) >= 2
+        else repo_url
+    )
 
     clone_path = REPOS_DIR / repo_name
     if clone_path.exists():
